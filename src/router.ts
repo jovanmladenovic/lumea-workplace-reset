@@ -15,6 +15,11 @@ import MentalBalance2 from './views/activity/MentalBalance2.vue';
 import ResetAndFocus1 from './views/activity/ResetAndFocus1.vue';
 import ResetAndFocus2 from './views/activity/ResetAndFocus2.vue';
 
+// Ambient re-engagement layer (Luméa) — parallel to Idle, does not touch the
+// existing face-login/CheckIn flow. See docs/lumea-project-handoff.md.
+import AmbientStandby from './views/AmbientStandby.vue';
+import Engage from './views/Engage.vue';
+
 export enum RoutePaths {
   Idle = '/idle',
   Intro = '/',
@@ -29,6 +34,8 @@ export enum RoutePaths {
   ResetAndFocus1 = '/reset-and-focus-1',
   ResetAndFocus2 = '/reset-and-focus-2',
   Inactive = '/inactive',
+  AmbientStandby = '/ambient-standby',
+  Engage = '/engage',
 }
 
 export const routes = [
@@ -105,6 +112,16 @@ export const routes = [
     props: (route: RouteLocationNormalized) => ({
       returnPath: route.query.returnPath as string,
     }),
+  },
+  {
+    path: RoutePaths.AmbientStandby,
+    name: 'AmbientStandby',
+    component: AmbientStandby,
+  },
+  {
+    path: RoutePaths.Engage,
+    name: 'Engage',
+    component: Engage,
   },
 ];
 

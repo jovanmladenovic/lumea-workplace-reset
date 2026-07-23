@@ -1,0 +1,59 @@
+name: Deploy ambient/engage preview to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # @fitsee/user-input, @fitsee/face-recognition and @fitsee/user-tasks are
+      # private packages on the GitHub Packages registry. Requires a repo secret
+      # FITSEE_PACKAGES_TOKEN — a PAT (classic or fine-grained) with read:packages,
+      # authorized for SSO access to the Fitsee org.
+      - name: Configure registry auth for @fitsee packages
+        run: |
+          echo "@fitsee:registry=https://npm.pkg.github.com" >> .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${FITSEE_PACKAGES_TOKEN}" >> .npmrc
+        env:
+          FITSEE_PACKAGES_TOKEN: ${{ secrets.FITSEE_PACKAGES_TOKEN }}
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      # The web build only mounts the ambient/engage screens (src/main.web.ts) — no
+      # Electron main/preload, no Firebase. See vite.web.config.mts.
+      - name: Build web preview
+        run: yarn build:web
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

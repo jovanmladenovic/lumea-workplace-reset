@@ -1,14 +1,16 @@
 {
-  "name": "fitsee-new",
-  "productName": "fitsee-new",
+  "name": "lumea-workplace-reset",
+  "productName": "lumea-workplace-reset",
   "version": "1.0.0",
-  "description": "My Electron application description",
+  "description": "Lumea workplace reset — ambient re-engagement layer on the Fitsee app",
   "main": ".vite/build/main.js",
   "scripts": {
     "dev": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
+    "build:web": "vite build --config vite.web.config.mts",
+    "preview:web": "vite preview --config vite.web.config.mts",
     "lint": "eslint --ext .ts,.tsx .",
     "format": "prettier --write \"**/*.{js,ts,tsx,vue,json,css,scss,md}\"",
     "format:check": "prettier --check \"**/*.{js,ts,tsx,vue,json,css,scss,md}\""

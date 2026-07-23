@@ -22,6 +22,8 @@
       <router-link to="/reset-and-focus-2">Focus 2</router-link>
       <router-link to="/check-out">Check Out</router-link>
       <router-link to="/inactive">Inactive</router-link>
+      <router-link to="/ambient-standby">Ambient Standby</router-link>
+      <router-link to="/engage">Engage</router-link>
     </div>
   </div>
 </template>
