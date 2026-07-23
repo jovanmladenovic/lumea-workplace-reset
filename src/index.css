@@ -1,0 +1,35 @@
+@import 'tailwindcss';
+@config "../tailwind.config.js";
+
+@font-face {
+  font-family: 'Quicksand';
+  src: url('/fonts/quicksand/Quicksand-VariableFont_wght.ttf');
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Raleway';
+  src: url('/fonts/raleway/Raleway-VariableFont_wght.ttf');
+  font-style: normal;
+}
+
+:root,
+body {
+  height: 1920px;
+  width: 1080px;
+  margin: 0;
+  padding: 0;
+  font-weight: normal;
+  font-stretch: normal;
+  font-style: normal;
+  line-height: normal;
+  font-size: 34px;
+  color: white;
+  text-align: center;
+}
+
+#app {
+  height: 1920px;
+  width: 1080px;
+  background-color: black;
+}

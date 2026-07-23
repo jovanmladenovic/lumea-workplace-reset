@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Luméa — Connected Flow (Ambient → Reset)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,400&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14110f;
+    --ink-2:#1c1815;
+    --panel:#211c18;
+    --paper:#f4efe7;
+    --paper-dim:#c9c1b4;
+    --muted:#8c8378;
+    --amber:#e8a94c;
+    --amber-dim:#c8934a;
+    --mist:#7fa8a3;
+    --mist-dim:#5c7c78;
+    --line: rgba(244,239,231,0.12);
+    --mode-color: var(--amber);
+    --mode-glow: rgba(232,169,76,0.35);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:'Archivo', sans-serif;
+    background:#0a0908;
+    color: var(--paper);
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh;
+  }
+  .stage{ display:flex; flex-direction:row; align-items:stretch; justify-content:center; gap:28px; padding:32px 24px; }
+
+  .device{
+    position:relative;
+    width:400px; height:720px;
+    background: radial-gradient(120% 90% at 50% 12%, var(--ink-2) 0%, var(--ink) 62%);
+    border-radius:34px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.55), 0 0 0 9px #0e0c0a;
+    overflow:hidden;
+    transition: background 1.4s ease;
+  }
+  .grain{ position:absolute; inset:0; pointer-events:none; opacity:0.05; mix-blend-mode:overlay; z-index:60; }
+
+  .btn{
+    appearance:none; border:none; cursor:pointer;
+    font-family:'Archivo', sans-serif; font-weight:600; font-size:14px; letter-spacing:0.02em;
+    padding:16px 20px; border-radius:14px;
+    background:var(--paper); color:var(--ink);
+    transition: transform .15s ease, opacity .15s ease;
+    width:100%;
+  }
+  .btn:active{ transform:scale(0.97); }
+  .btn.ghost{ background:transparent; color:var(--paper-dim); border:1px solid var(--line); font-weight:500; width:auto; padding:12px 20px; }
+
+  /* generic overlay screen (intro / picker / reset / close) */
+  .scr{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    opacity:0; visibility:hidden; transform:scale(1.02);
+    transition: opacity .6s cubic-bezier(.2,.7,.3,1), transform .6s cubic-bezier(.2,.7,.3,1), visibility 0s linear .6s;
+    z-index:20;
+    background: radial-gradient(120% 90% at 50% 12%, var(--ink-2) 0%, var(--ink) 62%);
+  }
+  .scr.active{
+    opacity:1; visibility:visible; transform:scale(1);
+    transition: opacity .6s cubic-bezier(.2,.7,.3,1), transform .6s cubic-bezier(.2,.7,.3,1), visibility 0s linear 0s;
+  }
+
+  /* ---------- INTRO ---------- */
+  #scr-intro{ justify-content:space-between; padding:58px 36px 44px; }
+  .intro-mark{ width:32px; height:32px; border-radius:50%; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; }
+  .intro-mark::after{ content:''; width:8px; height:8px; border-radius:50%; background:var(--amber); }
+  .intro-body h1{ font-family:'Fraunces',serif; font-size:28px; line-height:1.24; font-style:italic; font-weight:300; margin:20px 0 18px; }
+  .intro-list{ display:flex; flex-direction:column; gap:13px; }
+  .intro-row{ display:flex; gap:12px; align-items:flex-start; font-size:13.5px; line-height:1.55; color:var(--paper-dim); }
+  .intro-row .dash{ color:var(--mist); font-family:'Fraunces',serif; font-style:italic; flex-shrink:0; }
+  .intro-foot .fine{ font-size:11.5px; color:var(--muted); line-height:1.5; margin-bottom:14px; }
+
+  /* ---------- STANDBY (base layer, not an overlay — this IS the device idle state) ---------- */
+  .standby-layer{ position:absolute; inset:0; z-index:1; }
+  .standby-layer.dim{ opacity:0.25; filter:blur(2px); transition:opacity .6s ease, filter .6s ease; }
+  .badge{
+    position:absolute; top:26px; left:50%; transform:translateX(-50%);
+    display:flex; align-items:center; gap:7px;
+    font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--paper-dim);
+    background: rgba(244,239,231,0.05); border:1px solid var(--line);
+    padding:8px 14px; border-radius:100px; z-index:10;
+  }
+  .badge .dot{ width:6px; height:6px; border-radius:50%; background:var(--mist); box-shadow:0 0 8px var(--mist); }
+  .standby-center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; }
+  .orb-wrap{ position:relative; width:220px; height:220px; display:flex; align-items:center; justify-content:center; }
+  .orb-ring{ position:absolute; inset:0; border-radius:50%; border:1px solid var(--line); animation: ring-breathe 6s ease-in-out infinite; transition: border-color 1.4s ease; }
+  .orb-ring.r2{ inset:-26px; opacity:0.5; animation-delay:0.6s; }
+  .orb-ring.r3{ inset:-52px; opacity:0.25; animation-delay:1.2s; }
+  @keyframes ring-breathe{ 0%,100%{ transform:scale(0.96); opacity:0.35; } 50%{ transform:scale(1.04); opacity:0.75; } }
+  .orb-core{
+    width:112px; height:112px; border-radius:50%;
+    background: radial-gradient(circle at 38% 32%, color-mix(in srgb, var(--mode-color) 55%, white), var(--mode-color) 60%, color-mix(in srgb, var(--mode-color) 70%, black) 100%);
+    box-shadow: 0 0 60px var(--mode-glow);
+    animation: core-breathe 6s ease-in-out infinite;
+    transition: background 1.4s ease, box-shadow .5s ease, transform .5s ease;
+  }
+  @keyframes core-breathe{ 0%,100%{ transform:scale(0.94); } 50%{ transform:scale(1.06); } }
+  .bloom-ring{ position:absolute; inset:0; margin:auto; width:112px; height:112px; border-radius:50%; border:1.5px solid var(--mode-color); opacity:0; pointer-events:none; }
+  .bloom-ring.play{ animation: bloom 1.8s cubic-bezier(.2,.7,.3,1) forwards; }
+  @keyframes bloom{ 0%{ opacity:0.9; transform:scale(1); } 100%{ opacity:0; transform:scale(2.6); } }
+  .standby-copy{ margin-top:40px; text-align:center; z-index:5; }
+  .standby-copy h2{ font-family:'Fraunces', serif; font-weight:300; font-style:italic; font-size:18px; color:var(--paper); }
+  .standby-copy p{ margin-top:6px; font-size:12px; color:var(--muted); }
+  .mode-tag{ position:absolute; bottom:26px; left:0; right:0; text-align:center; z-index:10; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--mode-color); opacity:0.85; transition: color 1.4s ease; }
+
+  /* ---------- PICKER ---------- */
+  #scr-picker{ padding:52px 28px 34px; justify-content:space-between; }
+  .picker-head p.eyebrow{ font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--mist); }
+  .picker-head h2{ font-family:'Fraunces', serif; font-weight:300; font-style:italic; font-size:23px; line-height:1.3; margin-top:8px; }
+  .picker-head p.sub{ margin-top:8px; font-size:12px; color:var(--muted); max-width:270px; }
+  .need-list{ display:flex; flex-direction:column; gap:11px; }
+  .need-card{
+    position:relative; overflow:hidden; display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:18px 18px; border-radius:15px; border:1px solid var(--line); background: var(--panel);
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; cursor:pointer;
+  }
+  .need-card .fill{ position:absolute; inset:0; left:0; width:0%; background: linear-gradient(90deg, rgba(232,169,76,0.22), rgba(232,169,76,0.08)); transition: width linear; z-index:0; }
+  .need-card .content{ position:relative; z-index:1; }
+  .need-card .content h3{ font-family:'Fraunces', serif; font-size:16px; font-weight:400; color:var(--paper); }
+  .need-card .content span{ display:block; margin-top:3px; font-size:12px; color:var(--muted); }
+  .need-card .hold-ring{ position:relative; z-index:1; width:32px; height:32px; border-radius:50%; flex-shrink:0; border:1.5px solid var(--line); }
+  .need-card .hold-ring svg{ position:absolute; inset:0; transform:rotate(-90deg); }
+  .need-card .hold-ring circle{ fill:none; stroke:var(--amber); stroke-width:2; stroke-dasharray:82; stroke-dashoffset:82; transition: stroke-dashoffset linear; }
+  .picker-foot{ font-size:11px; color:var(--muted); text-align:center; }
+
+  /* ---------- ENGAGE (thumbs-up confirmation, replaces the full session handoff for now) ---------- */
+  #scr-engage{ align-items:center; justify-content:center; text-align:center; padding:0 40px; }
+  .engage-wrap{ display:flex; flex-direction:column; align-items:center; }
+  .engage-orb-wrap{ position:relative; width:120px; height:120px; display:flex; align-items:center; justify-content:center; }
+  .engage-ring{ position:absolute; inset:-16px; border-radius:50%; border:1px solid var(--line); opacity:0.5; transition: opacity .5s ease, transform .5s ease; }
+  .engage-orb{
+    width:100px; height:100px; border-radius:50%;
+    background: radial-gradient(circle at 38% 32%, #f7cf8e, var(--amber-dim) 60%, #8a6530 100%);
+    box-shadow: 0 0 30px rgba(232,169,76,0.18);
+    transition: box-shadow .6s ease, transform .6s ease;
+    opacity:0.55;
+  }
+  .engage-orb-wrap.confirmed .engage-orb{ opacity:1; box-shadow: 0 0 70px rgba(232,169,76,0.5); transform:scale(1.12); }
+  .engage-orb-wrap.confirmed .engage-ring{ opacity:0.9; transform:scale(1.15); }
+  .engage-icon{ position:absolute; width:30px; height:30px; color:var(--ink); opacity:0.8; transition: transform .3s ease; }
+  .engage-orb-wrap.confirmed .engage-icon{ transform:scale(1.1) rotate(-6deg); }
+  #scr-engage h2{ font-family:'Fraunces', serif; font-weight:300; font-style:italic; font-size:19px; margin-top:24px; min-height:26px; }
+  #scr-engage p{ margin-top:10px; font-size:12px; line-height:1.55; color:var(--muted); max-width:270px; min-height:36px; }
+
+  /* ---------- RESET ---------- */
+  #scr-reset{ align-items:center; justify-content:space-between; padding:52px 30px 36px; }
+  .reset-top{ text-align:center; }
+  .reset-top .eyebrow{ font-size:10.5px; letter-spacing:0.12em; text-transform:uppercase; color:var(--mist); }
+  .reset-top h2{ margin-top:10px; font-family:'Fraunces', serif; font-size:18px; font-weight:300; font-style:italic; max-width:290px; line-height:1.4; transition: opacity .35s ease; min-height:76px; }
+  .reset-top h2.swap{ opacity:0; }
+  .step-dots{ display:flex; gap:6px; }
+  .step-dots .dot{ width:5px; height:5px; border-radius:50%; background:var(--line); transition: background .3s ease, transform .3s ease; }
+  .step-dots .dot.active{ background:var(--mist); transform:scale(1.4); }
+  .step-dots .dot.done{ background:var(--paper-dim); }
+  .breathe-orb-wrap{ position:relative; width:230px; height:230px; display:flex; align-items:center; justify-content:center; }
+  .breathe-orb{
+    width:144px; height:144px; border-radius:50%;
+    background: radial-gradient(circle at 38% 32%, #dff0ee, var(--mist) 55%, var(--mist-dim) 100%);
+    box-shadow: 0 0 70px rgba(127,168,163,0.35);
+    animation: breathe-cycle 10s ease-in-out infinite;
+  }
+  @keyframes breathe-cycle{ 0%{ transform:scale(0.72); } 40%{ transform:scale(1.12); } 60%{ transform:scale(1.12); } 100%{ transform:scale(0.72); } }
+  /* movement steps (shoulder roll, arm shake, neck roll) get a sway, not a breath pulse */
+  @keyframes orb-sway{ 0%,100%{ transform: translateX(-7px) rotate(-4deg) scale(0.98); } 50%{ transform: translateX(7px) rotate(4deg) scale(0.98); } }
+  .breathe-orb-wrap.mode-move .breathe-orb{ animation: orb-sway 1.5s ease-in-out infinite; }
+  /* grounding / reflective steps: the orb goes nearly still, on purpose */
+  @keyframes orb-still{ 0%,100%{ transform:scale(0.97); } 50%{ transform:scale(1.01); } }
+  .breathe-orb-wrap.mode-ground .breathe-orb,
+  .breathe-orb-wrap.mode-close .breathe-orb{ animation: orb-still 4.5s ease-in-out infinite; }
+  .breathe-label{ position:absolute; font-size:13px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink); font-weight:600; opacity:0.85; }
+  .step-ring{ position:absolute; inset:-9px; transform:rotate(-90deg); pointer-events:none; }
+  .step-ring .bg{ fill:none; stroke:var(--line); stroke-width:2; }
+  .step-ring .fg{ fill:none; stroke:var(--mist); stroke-width:2; stroke-linecap:round; }
+  .reset-bottom{ width:100%; display:flex; flex-direction:column; gap:16px; align-items:center; }
+  .rationale{ text-align:center; font-size:12.5px; line-height:1.6; color:var(--paper-dim); max-width:300px; }
+  .rationale .tag{ display:block; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--mist); margin-bottom:8px; }
+  .timer-row{ display:flex; align-items:center; gap:10px; font-size:12px; color:var(--muted); }
+  .timer-track{ width:120px; height:3px; border-radius:3px; background:var(--line); overflow:hidden; }
+  .timer-fill{ height:100%; width:0%; background:var(--mist); transition: width 1s linear; }
+
+  /* ---------- CLOSE ---------- */
+  #scr-close{ align-items:center; justify-content:center; text-align:center; padding:0 48px; }
+  #scr-close h2{ font-family:'Fraunces', serif; font-size:24px; font-weight:300; font-style:italic; line-height:1.35; color:var(--paper); }
+  #scr-close .fade-track{ margin:34px auto 0; width:140px; height:2px; border-radius:2px; background:var(--line); overflow:hidden; }
+  #scr-close .fade-fill{ height:100%; width:0%; background:var(--paper-dim); transition:width linear; }
+
+  /* ---- controls panel ---- */
+  .panel{ width:380px; height:720px; overflow-y:auto; background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:22px 22px 24px; font-size:12.5px; }
+  @media (max-width: 860px){
+    .stage{ flex-direction:column; align-items:center; padding:24px 16px 60px; }
+    .panel{ width:400px; height:auto; max-height:none; overflow-y:visible; }
+  }
+  .panel h3{ font-family:'Fraunces', serif; font-weight:400; font-style:italic; font-size:15px; color:var(--paper); margin-bottom:4px; }
+  .panel .sub{ color:var(--muted); font-size:11.5px; margin-bottom:16px; line-height:1.5; }
+  .group{ margin-bottom:18px; }
+  .group-label{ font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+  .time-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+  .time-btn{ all:unset; cursor:pointer; text-align:center; padding:10px 8px; border-radius:10px; border:1px solid var(--line); font-size:11.5px; color:var(--paper-dim); background:rgba(244,239,231,0.03); transition: all .15s ease; }
+  .time-btn.active{ background:var(--paper); color:var(--ink); font-weight:600; border-color:var(--paper); }
+  .trigger-btn{ all:unset; box-sizing:border-box; cursor:pointer; width:100%; text-align:center; padding:13px; border-radius:12px; background:var(--amber); color:var(--ink); font-weight:600; font-size:13px; letter-spacing:0.01em; transition: opacity .15s ease, transform .1s ease; }
+  .trigger-btn:active{ transform:scale(0.98); }
+  .trigger-btn.cooldown{ opacity:0.35; pointer-events:none; }
+  .trigger-btn.mist{ background:var(--mist); color:#0f1614; }
+  .status-row{ display:flex; justify-content:space-between; align-items:center; margin-top:9px; font-size:11px; color:var(--muted); }
+  .status-row b{ color:var(--paper-dim); font-weight:500; }
+  .divider{ height:1px; background:var(--line); margin:16px 0; }
+  .devjump{ display:flex; gap:6px; flex-wrap:wrap; }
+  .devjump button{ all:unset; cursor:pointer; font-size:10.5px; color:var(--paper-dim); background:rgba(244,239,231,0.05); border:1px solid var(--line); padding:7px 10px; border-radius:100px; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="device" id="device">
+    <div class="grain"></div>
+
+    <!-- STANDBY (base idle state) -->
+    <div class="standby-layer" id="standby-layer">
+      <div class="badge"><span class="dot"></span> Anonymous, always</div>
+      <div class="standby-center" id="standby-center">
+        <div class="orb-wrap">
+          <div class="orb-ring"></div>
+          <div class="orb-ring r2"></div>
+          <div class="orb-ring r3"></div>
+          <div class="orb-core" id="orb-core"></div>
+          <div class="bloom-ring" id="bloom"></div>
+        </div>
+        <div class="standby-copy">
+          <h2 id="standby-line">Standing by.</h2>
+          <p>A session starts the moment you step in.</p>
+        </div>
+      </div>
+      <div class="mode-tag" id="mode-tag">Regular hours</div>
+    </div>
+
+    <!-- INTRO (first-run only, shown once device-wide) -->
+    <div class="scr" id="scr-intro">
+      <div>
+        <div class="intro-mark"></div>
+        <div class="intro-body">
+          <h1>Before we begin —<br>a few things to know.</h1>
+          <div class="intro-list">
+            <div class="intro-row"><span class="dash">—</span><span>Nobody is identified. This mirror doesn't know who you are, and it isn't trying to find out.</span></div>
+            <div class="intro-row"><span class="dash">—</span><span>Nothing is recorded. No photos, no footage, no history saved — anywhere, ever.</span></div>
+            <div class="intro-row"><span class="dash">—</span><span>It only notices that <em>someone</em> is standing here, the way a motion light would.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="intro-foot">
+        <p class="fine">Shown once, on this device. You won't see this again.</p>
+        <button class="btn" onclick="go('standby')">Got it</button>
+      </div>
+    </div>
+
+    <!-- ENGAGE — lightweight thumbs-up confirmation (current focus: prove engagement happens at all) -->
+    <div class="scr" id="scr-engage">
+      <div class="engage-wrap">
+        <div class="engage-orb-wrap" id="engage-orb-wrap">
+          <div class="engage-ring"></div>
+          <div class="engage-orb"></div>
+          <svg class="engage-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h3zM7 10l4.5-6.5a1.5 1.5 0 0 1 2.7.9V9h5.1a2 2 0 0 1 1.98 2.3l-1.2 8A2 2 0 0 1 18.1 21H10a3 3 0 0 1-3-3v-8z"/>
+          </svg>
+        </div>
+        <h2 id="engage-line">Thanks for stopping by.</h2>
+        <p id="engage-sub">A quick thumbs up is all we need.</p>
+      </div>
+    </div>
+
+    <!-- PICKER (full flow, parked for now — reachable via dev jump for reference) -->
+    <div class="scr" id="scr-picker">
+      <div class="picker-head">
+        <p class="eyebrow" id="picker-eyebrow">You stopped — so let's do something</p>
+        <h2>What do you<br>need right now?</h2>
+        <p class="sub">Hold your choice for a moment to confirm.</p>
+      </div>
+      <div class="need-list">
+        <div class="need-card" data-need="stressed" onpointerdown="startHold(this)" onpointerup="cancelHold(this)" onpointerleave="cancelHold(this)">
+          <div class="fill"></div>
+          <div class="content"><h3>Stressed</h3><span>Something's winding you up</span></div>
+          <div class="hold-ring"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="13.5"/></svg></div>
+        </div>
+        <div class="need-card" data-need="break" onpointerdown="startHold(this)" onpointerup="cancelHold(this)" onpointerleave="cancelHold(this)">
+          <div class="fill"></div>
+          <div class="content"><h3>Need a break</h3><span>Just a moment away from it</span></div>
+          <div class="hold-ring"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="13.5"/></svg></div>
+        </div>
+        <div class="need-card" data-need="focus" onpointerdown="startHold(this)" onpointerup="cancelHold(this)" onpointerleave="cancelHold(this)">
+          <div class="fill"></div>
+          <div class="content"><h3>Losing focus</h3><span>Can't quite lock back in</span></div>
+          <div class="hold-ring"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="13.5"/></svg></div>
+        </div>
+      </div>
+      <p class="picker-foot">Held gestures avoid accidental starts — no taps here.</p>
+    </div>
+
+    <!-- RESET -->
+    <div class="scr" id="scr-reset">
+      <div class="reset-top">
+        <p class="eyebrow" id="reset-eyebrow">For when you're stressed</p>
+        <h2 id="reset-title">Let's slow the exhale down.</h2>
+      </div>
+      <div class="breathe-orb-wrap">
+        <svg class="step-ring" viewBox="0 0 248 248">
+          <circle class="bg" cx="124" cy="124" r="115"/>
+          <circle class="fg" id="step-ring-fg" cx="124" cy="124" r="115" stroke-dasharray="722.6" stroke-dashoffset="0"/>
+        </svg>
+        <div class="breathe-orb" id="breathe-orb"></div>
+        <div class="breathe-label" id="breathe-label">IN</div>
+      </div>
+      <div class="reset-bottom">
+        <div class="rationale">
+          <span class="tag">Why this helps</span>
+          <span id="reset-rationale">A longer exhale than inhale is one of the fastest ways to nudge your nervous system out of high alert.</span>
+        </div>
+        <div class="step-dots" id="step-dots"></div>
+        <div class="timer-row">
+          <span>0:00</span>
+          <div class="timer-track"><div class="timer-fill" id="reset-timer"></div></div>
+          <span id="reset-duration">1:30</span>
+        </div>
+        <button class="btn ghost" onclick="go('close')">End early</button>
+      </div>
+    </div>
+
+    <!-- CLOSE -->
+    <div class="scr" id="scr-close">
+      <div>
+        <h2 id="close-line">That's it.<br>Go gently.</h2>
+        <div class="fade-track"><div class="fade-fill" id="close-fade"></div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="panel">
+    <h3>Ambient layer — director's controls</h3>
+    <p class="sub">Current focus: prove engagement happens at all. Stepping close now asks for a thumbs up, not a full session — the picker/reset/close flow still exists below, parked for once this is validated.</p>
+
+    <div class="group">
+      <div class="group-label">B — Time-of-day pulse (idle only)</div>
+      <div class="time-grid">
+        <button class="time-btn active" data-color="#e8a94c" data-glow="rgba(232,169,76,0.35)" data-bg1="#1c1815" data-bg2="#14110f" data-line="Standing by." data-tag="Regular hours">Regular hours</button>
+        <button class="time-btn" data-color="#d97757" data-glow="rgba(217,119,87,0.4)" data-bg1="#241a15" data-bg2="#160f0c" data-line="Still here, if you need it." data-tag="Post-lunch — 2:45pm">Post-lunch slump</button>
+        <button class="time-btn" data-color="#6b7fb3" data-glow="rgba(107,127,179,0.4)" data-bg1="#171a24" data-bg2="#0f1016" data-line="Easing into the week." data-tag="Monday morning">Monday AM</button>
+        <button class="time-btn" data-color="#8a6fa3" data-glow="rgba(138,111,163,0.4)" data-bg1="#1c1622" data-bg2="#110d16" data-line="Winding down, too." data-tag="Evening">Evening</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="group">
+      <div class="group-label">A — Foot-traffic bloom</div>
+      <button class="trigger-btn" id="trigger" onclick="simulatePass()">Simulate someone walking by</button>
+      <div class="status-row"><span>Cooldown</span><b id="cooldown-status">ready</b></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="group">
+      <div class="group-label">C — Engagement confirmation (thumbs up)</div>
+      <button class="trigger-btn mist" onclick="simulateApproach()">Simulate stepping close</button>
+      <button class="trigger-btn" style="margin-top:8px;" onclick="simulateThumbsUp()">Simulate thumbs up</button>
+      <div class="status-row"><span>Response</span><b>reciprocity + one-line teaser</b></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="group">
+      <div class="group-label">Jump directly (demo speed)</div>
+      <div class="devjump">
+        <button onclick="go('intro')">Intro</button>
+        <button onclick="go('standby')">Standby</button>
+        <button onclick="go('engage')">Engage</button>
+        <button onclick="go('picker')" title="full session flow, parked for now">Picker (parked)</button>
+        <button onclick="selectNeed('stressed')" title="full session flow, parked for now">Reset (parked)</button>
+        <button onclick="go('close')" title="full session flow, parked for now">Close (parked)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Adapted from the FITSEE intervention doc — silent, no vocalizing, no poses
+// that would look unusual to a passing colleague. One technique per need.
+const needs = {
+  stressed: {
+    eyebrow: "For when you're stressed",
+    rationale: "A double inhale followed by a long exhale is one of the fastest ways to calm your nervous system in real time — the same shift behind a sigh of relief.",
+    close: "That's it.<br>Go gently.",
+    steps: [
+      { text: "Notice three things you can see right now.", duration: 15, mode: 'ground' },
+      { text: "Two short inhales through your nose.\nOne long exhale through your mouth.", duration: 24, mode: 'breathe', pattern: [{l:'IN',d:1.2},{l:'IN',d:1.2},{l:'OUT',d:5.6}], cycles: 3 },
+      { text: "That's the shift.", duration: 8, mode: 'close' }
+    ]
+  },
+  break: {
+    eyebrow: "For your break",
+    rationale: "Short as it is, this is enough to actually reset — you don't need twenty minutes away from your desk for it to register.",
+    close: "Back whenever<br>you're ready.",
+    steps: [
+      { text: "Roll your shoulders, slowly.", duration: 8, mode: 'move' },
+      { text: "Shake out your arms for a few seconds.", duration: 6, mode: 'move' },
+      { text: "One strong inhale, stretch up.\nSigh it out.", duration: 18, mode: 'breathe', pattern: [{l:'IN',d:3},{l:'OUT',d:3}], cycles: 3 },
+      { text: "Small reset. That counts.", duration: 7, mode: 'close' }
+    ]
+  },
+  focus: {
+    eyebrow: "For losing focus",
+    rationale: "Paced breathing like this shifts brain activity toward a state associated with steadier, more sustained attention.",
+    close: "Sharper now.<br>Off you go.",
+    steps: [
+      { text: "Slow neck roll, one way, then the other.", duration: 10, mode: 'move' },
+      { text: "Shoulder blades back and squeeze — three times.", duration: 9, mode: 'move' },
+      { text: "Inhale for 4 seconds.\nExhale for 6.", duration: 30, mode: 'breathe', pattern: [{l:'IN',d:4},{l:'OUT',d:6}], cycles: 3 },
+      { text: "Quietly, to yourself:\nwhat deserves my attention right now?", duration: 10, mode: 'close' }
+    ]
+  }
+};
+
+// ---------- screen state machine ----------
+function go(name){
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('active'));
+  const standby = document.getElementById('standby-layer');
+  const core = document.getElementById('orb-core');
+
+  if(name === 'standby'){
+    standby.classList.remove('dim');
+    core.style.transform = 'scale(1)';
+    core.style.boxShadow = '0 0 60px var(--mode-glow)';
+    clearTimeout(resetTimerInterval);
+    clearTimeout(stepChainTimer);
+    clearTimeout(breathPatternTimer);
+    clearTimeout(engageReturnTimer);
+    const ring = document.getElementById('step-ring-fg');
+    ring.style.transition = 'none';
+    ring.style.strokeDashoffset = '0';
+    return;
+  }
+
+  standby.classList.add('dim');
+  document.getElementById('scr-' + name).classList.add('active');
+  if(name === 'close') runClose();
+  if(name === 'engage'){
+    clearTimeout(engageReturnTimer);
+    document.getElementById('engage-orb-wrap').classList.remove('confirmed');
+    document.getElementById('engage-line').textContent = 'Thanks for stopping by.';
+    document.getElementById('engage-sub').textContent = 'A quick thumbs up is all we need.';
+  }
+}
+
+// ---------- time-of-day pulse ----------
+const device = document.getElementById('device');
+const modeTag = document.getElementById('mode-tag');
+const standbyLine = document.getElementById('standby-line');
+document.querySelectorAll('.time-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.time-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    device.style.setProperty('--mode-color', btn.dataset.color);
+    device.style.setProperty('--mode-glow', btn.dataset.glow);
+    device.style.background = `radial-gradient(120% 90% at 50% 12%, ${btn.dataset.bg1} 0%, ${btn.dataset.bg2} 62%)`;
+    modeTag.textContent = btn.dataset.tag;
+    standbyLine.textContent = btn.dataset.line;
+  });
+});
+
+// ---------- A: foot-traffic bloom ----------
+let cooldownUntil = 0;
+const COOLDOWN_MS = 6000;
+function simulatePass(){
+  const now = Date.now();
+  if(now < cooldownUntil) return;
+  const bloom = document.getElementById('bloom');
+  bloom.classList.remove('play'); void bloom.offsetWidth; bloom.classList.add('play');
+  playChime(0.05);
+  cooldownUntil = now + COOLDOWN_MS;
+  updateCooldownUI();
+  const trig = document.getElementById('trigger');
+  trig.classList.add('cooldown');
+  setTimeout(()=>{ trig.classList.remove('cooldown'); }, COOLDOWN_MS);
+}
+function updateCooldownUI(){
+  const remaining = Math.max(0, Math.ceil((cooldownUntil - Date.now())/1000));
+  const status = document.getElementById('cooldown-status');
+  if(remaining <= 0){ status.textContent = 'ready'; return; }
+  status.textContent = remaining + 's';
+  setTimeout(updateCooldownUI, 300);
+}
+
+// ---------- C: approach -> engage (thumbs up), replaces the full-session handoff for now ----------
+let engageReturnTimer = null;
+const teasers = [
+  "A longer exhale than inhale calms your nervous system in real time.",
+  "Ninety seconds is enough for your attention to actually reset.",
+  "Paced breathing shifts your brain toward steadier focus.",
+  "A rolled shoulder and a slow breath do more than they look like they should.",
+  "Noticing three things around you is enough to pull you back into the room."
+];
+function simulateApproach(){
+  const core = document.getElementById('orb-core');
+  core.style.transform = 'scale(1.15)';
+  core.style.boxShadow = '0 0 90px var(--mode-glow)';
+  playChime(0.06);
+  setTimeout(()=>{ go('engage'); }, 850);
+}
+function simulateThumbsUp(){
+  if(!document.getElementById('scr-engage').classList.contains('active')) return;
+  const teaser = teasers[Math.floor(Math.random() * teasers.length)];
+  document.getElementById('engage-orb-wrap').classList.add('confirmed');
+  document.getElementById('engage-line').textContent = 'Good to see you.';
+  document.getElementById('engage-sub').textContent = teaser;
+  playChime(0.07);
+  clearTimeout(engageReturnTimer);
+  engageReturnTimer = setTimeout(()=>{ go('standby'); }, 4200);
+}
+function onStandbyTap(){ simulateApproach(); }
+document.getElementById('standby-center').addEventListener('click', onStandbyTap);
+
+// ---------- picker: hold-to-confirm ----------
+let holdTimer=null;
+const HOLD_MS = 900;
+function startHold(el){
+  document.querySelectorAll('.need-card').forEach(cancelHold);
+  const fill = el.querySelector('.fill');
+  const circle = el.querySelector('circle');
+  fill.style.transition = `width ${HOLD_MS}ms linear`;
+  fill.style.width = '100%';
+  circle.style.transition = `stroke-dashoffset ${HOLD_MS}ms linear`;
+  circle.style.strokeDashoffset = '0';
+  holdTimer = setTimeout(()=>{ selectNeed(el.dataset.need); }, HOLD_MS);
+}
+function cancelHold(el){
+  if(holdTimer){ clearTimeout(holdTimer); holdTimer=null; }
+  const fill = el.querySelector('.fill');
+  const circle = el.querySelector('circle');
+  fill.style.transition = 'width 200ms ease';
+  fill.style.width = '0%';
+  circle.style.transition = 'stroke-dashoffset 200ms ease';
+  circle.style.strokeDashoffset = '82';
+}
+
+// ---------- reset: multi-step intervention engine ----------
+let resetTimerInterval = null;   // overall progress bar -> triggers close
+let stepChainTimer = null;       // advances to the next step
+let breathPatternTimer = null;   // drives IN/OUT label within a breathing step
+
+function selectNeed(key){
+  const n = needs[key];
+  const totalDuration = n.steps.reduce((sum, s) => sum + s.duration, 0);
+
+  document.getElementById('reset-eyebrow').textContent = n.eyebrow;
+  document.getElementById('reset-rationale').textContent = n.rationale;
+  const mm = Math.floor(totalDuration/60), ss = String(Math.round(totalDuration%60)).padStart(2,'0');
+  document.getElementById('reset-duration').textContent = `${mm}:${ss}`;
+  document.getElementById('close-line').innerHTML = n.close;
+
+  buildStepDots(n.steps.length);
+  go('reset');
+  runResetTimer(totalDuration);
+  runSteps(n.steps, 0);
+}
+
+function buildStepDots(count){
+  const wrap = document.getElementById('step-dots');
+  wrap.innerHTML = '';
+  for(let i=0; i<count; i++){
+    const d = document.createElement('div');
+    d.className = 'dot';
+    wrap.appendChild(d);
+  }
+}
+function markStepDot(idx){
+  const dots = document.querySelectorAll('#step-dots .dot');
+  dots.forEach((d,i)=>{
+    d.classList.toggle('active', i === idx);
+    d.classList.toggle('done', i < idx);
+  });
+}
+
+function runSteps(steps, idx){
+  clearTimeout(stepChainTimer);
+  clearTimeout(breathPatternTimer);
+  if(idx >= steps.length) return; // overall timer handles the transition to close
+
+  const step = steps[idx];
+  const titleEl = document.getElementById('reset-title');
+  titleEl.classList.add('swap');
+  setTimeout(()=>{
+    titleEl.innerHTML = step.text.replace(/\n/g, '<br>');
+    titleEl.classList.remove('swap');
+  }, 200);
+
+  markStepDot(idx);
+
+  const RING_CIRC = 722.6;
+  const ring = document.getElementById('step-ring-fg');
+  ring.style.transition = 'none';
+  ring.style.strokeDashoffset = '0';
+  void ring.offsetWidth;
+  ring.style.transition = `stroke-dashoffset ${step.duration}s linear`;
+  ring.style.strokeDashoffset = String(RING_CIRC);
+
+  const orbWrap = document.querySelector('.breathe-orb-wrap');
+  const orbEl = document.getElementById('breathe-orb');
+  const label = document.getElementById('breathe-label');
+  orbWrap.classList.remove('mode-move', 'mode-ground', 'mode-close', 'mode-breathe');
+
+  if(step.mode === 'breathe' && step.pattern){
+    orbWrap.classList.add('mode-breathe');
+    // tempo-match the pulse to this technique's actual cycle length, not a generic 10s —
+    // a physiological sigh (8s) should visibly move faster than 4-in/6-out focus breathing (10s)
+    const cycleLength = step.pattern.reduce((sum, p) => sum + p.d, 0);
+    orbEl.style.animation = `breathe-cycle ${cycleLength}s ease-in-out infinite`;
+    runBreathPattern(step.pattern, step.cycles || 1);
+  } else if(step.mode === 'move'){
+    orbWrap.classList.add('mode-move');
+    orbEl.style.animation = '';
+    label.textContent = 'MOVE';
+  } else {
+    orbWrap.classList.add('mode-ground');
+    orbEl.style.animation = '';
+    label.textContent = 'STILL';
+  }
+
+  stepChainTimer = setTimeout(()=>{ runSteps(steps, idx+1); }, step.duration*1000);
+}
+
+function runBreathPattern(pattern, cycles){
+  clearTimeout(breathPatternTimer);
+  const label = document.getElementById('breathe-label');
+  let cycleIdx = 0, labelIdx = 0;
+  function showLabel(){
+    if(cycleIdx >= cycles) return;
+    label.textContent = pattern[labelIdx].l;
+    breathPatternTimer = setTimeout(()=>{
+      labelIdx++;
+      if(labelIdx >= pattern.length){ labelIdx = 0; cycleIdx++; }
+      showLabel();
+    }, pattern[labelIdx].d * 1000);
+  }
+  showLabel();
+}
+
+function runResetTimer(duration){
+  clearInterval(resetTimerInterval);
+  const fillEl = document.getElementById('reset-timer');
+  fillEl.style.transition = 'none'; fillEl.style.width = '0%'; void fillEl.offsetWidth;
+  fillEl.style.transition = `width ${duration}s linear`; fillEl.style.width = '100%';
+  resetTimerInterval = setTimeout(()=>{ go('close'); }, duration*1000);
+}
+
+// ---------- close ----------
+function runClose(){
+  clearTimeout(resetTimerInterval);
+  clearTimeout(stepChainTimer);
+  clearTimeout(breathPatternTimer);
+  const fade = document.getElementById('close-fade');
+  fade.style.transition = 'none'; fade.style.width = '0%'; void fade.offsetWidth;
+  fade.style.transition = 'width 3.2s linear'; fade.style.width = '100%';
+  setTimeout(()=>{ go('standby'); }, 3400);
+}
+
+function playChime(vol){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    [523.25, 659.25].forEach((freq, i)=>{
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, now + i*0.09);
+      gain.gain.linearRampToValueAtTime(vol || 0.05, now + i*0.09 + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + i*0.09 + 1.1);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now + i*0.09); osc.stop(now + i*0.09 + 1.2);
+    });
+  }catch(e){}
+}
+</script>
+
+</body>
+</html>

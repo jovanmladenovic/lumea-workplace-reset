@@ -1,0 +1,15 @@
+# Ignore artifacts
+dist
+.vite
+node_modules
+coverage
+.electron-vendors.cache.json
+
+# Ignore package files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Ignore specific files
+*.min.js
+*.min.css
