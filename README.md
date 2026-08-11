@@ -40,11 +40,23 @@ same camera feed — works, but is redundant inference cost worth revisiting lat
 aggregate running totals, `passersBy` / `approaches` / `engagements`, incremented
 from `triggerBloom()`, `handleApproach()`, and `Engage.vue`'s `confirmEngagement()`
 respectively. No timestamps, no identity, no per-event log — just numbers going up,
-consistent with "anonymous, always". Persisted via IPC (`counts:increment`/
-`counts:get` in `main.ts`) to a JSON file in Electron's `userData` dir, so it
-survives restarts. Logged to DevTools console on every increment for visibility. No
-UI to view them yet — read the file directly, or call
-`window.electronAPI.getCounts()` from the DevTools console.
+consistent with "anonymous, always". Two backends, both best-effort:
+- **Firestore** — `engagementCounts/{DEVICE_ID}` (falls back to `default-device` if
+  `DEVICE_ID` isn't set), same project the app already uses for face vectors. This is
+  the one that actually matters: the mirror has no physical access, only remote
+  updates (handoff doc §2), so this is what makes the counts checkable at all. Uses
+  `firebaseApp` directly rather than vuefire's `useFirestore()` (which needs a
+  component context this service doesn't have) — works from both Electron and the
+  GitHub Pages preview build, since `firebase/firebase.ts` has no
+  `window.electronAPI` dependency.
+- **Local JSON file** via IPC (`counts:increment`/`counts:get` in `main.ts`),
+  Electron-only, survives restarts — kept as an offline-tolerant secondary record.
+  No retry queue, so a Firestore write that fails while offline is just lost from
+  Firestore's side (the local file still has it).
+
+Logged to DevTools console on every increment (both backends) for visibility. No UI
+to view them yet — check the `engagementCounts` collection directly in the Firebase
+console, read the local file, or call `window.electronAPI.getCounts()` from DevTools.
 
 ## Running it
 
@@ -88,12 +100,13 @@ https://jovanmladenovic.github.io/lumea-workplace-reset/.
   `userTasks`'s existing one) on the same camera feed — functional but wasteful;
   would need the `@fitsee/user-tasks` package itself to expose a shared tracker to
   fix properly.
-- **The counter has no viewing UI and no export path off the device yet** — it's a
-  local JSON file inside Electron's `userData` dir. Fine for local testing, not yet
-  useful for "check engagement remotely without physical access" (the actual
-  deployment constraint from the handoff doc §2). Would need either a small
-  in-app admin view or shipping the counts to Firestore (already used elsewhere in
-  this app) to be checked remotely.
+- **The Firestore writes for `engagementCounts` are unverified against the actual
+  security rules** for the `fitsee-d45e6` project — I don't have access to check
+  them. If counts aren't showing up in Firestore, that's the first thing to check
+  (existing writes like `Idle.vue`'s `vectors` collection may be relying on an auth
+  state — anonymous or otherwise — that this service doesn't set up).
+- **No viewing UI** — check the `engagementCounts` collection directly in the
+  Firebase console for now.
 - `yarn install` / `yarn dev` are confirmed working locally (2026-08-11) with proper
   `@fitsee` registry auth. Real-camera presence detection and the thumbs-up gesture
   still need to be verified end-to-end in front of an actual webcam — I've only been
