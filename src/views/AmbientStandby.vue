@@ -12,6 +12,9 @@
   const isElectron = typeof window !== 'undefined' && Boolean((window as unknown as { electronAPI?: unknown }).electronAPI);
   const presenceStatus = ref<'unavailable' | 'watching' | 'present'>('unavailable');
 
+  // Hidden for now — flip back to true to bring back the manual test controls.
+  const SHOW_DEV_CONTROLS = false;
+
   // Fade+scale in on mount (e.g. returning from Engage) — starts true so the
   // .entering CSS state is present for the very first render, then cleared a
   // frame later so the transition actually has something to animate from.
@@ -233,7 +236,7 @@
       <!-- Dev/demo controls — real presence detection (PersonDetection) drives the
            bloom/approach automatically inside Electron; these stay as manual test
            aids and as the only trigger in the browser preview build. -->
-      <div class="dev-controls">
+      <div v-if="SHOW_DEV_CONTROLS" class="dev-controls">
         <span v-if="isElectron" class="dev-status">presence sensor: {{ presenceStatus }}</span>
         <button class="dev-btn" @click="triggerBloom">
           Simulate someone walking by{{ cooldownRemaining > 0 ? ` (${cooldownRemaining}s)` : '' }}
