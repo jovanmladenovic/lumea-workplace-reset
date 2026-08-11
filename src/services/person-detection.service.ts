@@ -25,7 +25,17 @@ class PersonDetectionService {
       logoutTimeWindow: 3,
     });
 
+    // Unconditional (not gated by ENABLE_LOGGER) — this is the quickest way to
+    // confirm from DevTools that the camera + pose model are actually running.
+    this._detector.subscribe(PersonDetectionEvents.PERSON_PRESENT, () =>
+      console.log('[person-detection] PERSON_PRESENT')
+    );
+    this._detector.subscribe(PersonDetectionEvents.PERSON_MISSING, () =>
+      console.log('[person-detection] PERSON_MISSING')
+    );
+
     this._detector.initialize();
+    console.log('[person-detection] PersonDetection initialized against', videoElement);
     this._resolveReady(this._detector);
   }
 
