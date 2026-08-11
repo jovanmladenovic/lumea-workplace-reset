@@ -241,24 +241,24 @@
 
   .badge {
     position: absolute;
-    top: 42px;
+    top: 55px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     align-items: center;
-    gap: 11px;
-    font-size: 17px;
+    gap: 14px;
+    font-size: 22px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: #c9c1b4;
     background: rgba(244, 239, 231, 0.05);
     border: 1px solid rgba(244, 239, 231, 0.12);
-    padding: 13px 22px;
+    padding: 17px 29px;
     border-radius: 100px;
   }
   .badge .dot {
-    width: 10px;
-    height: 10px;
+    width: 13px;
+    height: 13px;
     border-radius: 50%;
     background: #7fa8a3;
     box-shadow: 0 0 8px #7fa8a3;
@@ -274,8 +274,8 @@
 
   .orb-wrap {
     position: relative;
-    width: 352px;
-    height: 352px;
+    width: 458px;
+    height: 458px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -288,12 +288,12 @@
     animation: ring-breathe 6s ease-in-out infinite;
   }
   .orb-ring.r2 {
-    inset: -42px;
+    inset: -55px;
     opacity: 0.5;
     animation-delay: 0.6s;
   }
   .orb-ring.r3 {
-    inset: -84px;
+    inset: -109px;
     opacity: 0.25;
     animation-delay: 1.2s;
   }
@@ -310,8 +310,8 @@
   }
 
   .orb-core {
-    width: 180px;
-    height: 180px;
+    width: 234px;
+    height: 234px;
     border-radius: 50%;
     background: radial-gradient(
       circle at 38% 32%,
@@ -344,8 +344,8 @@
     position: absolute;
     inset: 0;
     margin: auto;
-    width: 180px;
-    height: 180px;
+    width: 234px;
+    height: 234px;
     border-radius: 50%;
     border: 1.5px solid var(--mode-color);
     opacity: 0;
@@ -366,29 +366,29 @@
   }
 
   .standby-copy {
-    margin-top: 64px;
+    margin-top: 83px;
     text-align: center;
   }
   .standby-copy h2 {
     font-family: 'Fraunces', serif;
     font-weight: 300;
     font-style: italic;
-    font-size: 29px;
+    font-size: 38px;
     color: #f4efe7;
   }
   .standby-copy p {
-    margin-top: 10px;
-    font-size: 19px;
+    margin-top: 13px;
+    font-size: 25px;
     color: #8c8378;
   }
 
   .mode-tag {
     position: absolute;
-    bottom: 42px;
+    bottom: 55px;
     left: 0;
     right: 0;
     text-align: center;
-    font-size: 16px;
+    font-size: 21px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--mode-color);
@@ -397,11 +397,11 @@
 
   .dev-controls {
     position: absolute;
-    top: 18px;
-    right: 18px;
+    top: 23px;
+    right: 23px;
     display: flex;
     flex-direction: column;
-    gap: 9px;
+    gap: 12px;
     opacity: 0.55;
   }
   .dev-controls:hover {
@@ -410,11 +410,11 @@
   .dev-btn {
     all: unset;
     cursor: pointer;
-    font-size: 15px;
+    font-size: 20px;
     color: #c9c1b4;
     background: rgba(244, 239, 231, 0.06);
     border: 1px solid rgba(244, 239, 231, 0.12);
-    padding: 9px 15px;
+    padding: 12px 20px;
     border-radius: 100px;
     white-space: nowrap;
   }
@@ -422,7 +422,7 @@
     color: #7fa8a3;
   }
   .dev-status {
-    font-size: 14px;
+    font-size: 18px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: #7fa8a3;

@@ -99,15 +99,15 @@
 
   .engage-orb-wrap {
     position: relative;
-    width: 192px;
-    height: 192px;
+    width: 250px;
+    height: 250px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
   .engage-ring {
     position: absolute;
-    inset: -26px;
+    inset: -34px;
     border-radius: 50%;
     border: 1px solid rgba(244, 239, 231, 0.12);
     opacity: 0.5;
@@ -116,8 +116,8 @@
       transform 0.5s ease;
   }
   .engage-orb {
-    width: 160px;
-    height: 160px;
+    width: 208px;
+    height: 208px;
     border-radius: 50%;
     background: radial-gradient(circle at 38% 32%, #f7cf8e, #c8934a 60%, #8a6530 100%);
     box-shadow: 0 0 30px rgba(232, 169, 76, 0.18);
@@ -138,8 +138,8 @@
   }
   .engage-icon {
     position: absolute;
-    width: 48px;
-    height: 48px;
+    width: 62px;
+    height: 62px;
     color: #14110f;
     opacity: 0.8;
     transition: transform 0.3s ease;
@@ -152,28 +152,28 @@
     font-family: 'Fraunces', serif;
     font-weight: 300;
     font-style: italic;
-    font-size: 30px;
-    margin-top: 38px;
-    min-height: 42px;
+    font-size: 39px;
+    margin-top: 49px;
+    min-height: 55px;
   }
   p {
-    margin-top: 16px;
-    font-size: 19px;
+    margin-top: 21px;
+    font-size: 25px;
     line-height: 1.55;
     color: #8c8378;
-    max-width: 430px;
-    min-height: 58px;
+    max-width: 559px;
+    min-height: 75px;
   }
 
   .dev-btn {
     all: unset;
     cursor: pointer;
-    margin-top: 29px;
-    font-size: 17px;
+    margin-top: 38px;
+    font-size: 22px;
     color: #c9c1b4;
     background: rgba(244, 239, 231, 0.06);
     border: 1px solid rgba(244, 239, 231, 0.12);
-    padding: 13px 26px;
+    padding: 17px 34px;
     border-radius: 100px;
   }
 </style>
