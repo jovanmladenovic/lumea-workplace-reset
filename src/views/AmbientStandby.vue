@@ -10,6 +10,7 @@
   const { playChime } = useChime();
 
   const isElectron = typeof window !== 'undefined' && Boolean((window as unknown as { electronAPI?: unknown }).electronAPI);
+  const presenceStatus = ref<'unavailable' | 'watching' | 'present'>('unavailable');
 
   // ---------- B: time-of-day pulse — clock-only, never personalized ----------
   type TimeMode = {
@@ -79,9 +80,6 @@
   let timeModeInterval: number | undefined;
 
   // ---------- A: foot-traffic bloom ----------
-  // No real non-identifying presence/proximity sensor is wired up yet (see README —
-  // "Open items"). triggerBloom() is exposed so a real sensor can call it directly
-  // once one exists; until then the dev control below drives it.
   const COOLDOWN_MS = 6000;
   const cooldownUntil = ref(0);
   const bloomPlaying = ref(false);
@@ -111,13 +109,13 @@
   }
 
   // ---------- C: approach -> engage ----------
-  // Same open question as the bloom trigger: no real proximity signal yet, so this
-  // fires from a direct tap (a real affordance if the mirror has a touch panel) or
-  // the dev control.
+  // Also fires from a direct tap (a real affordance if the mirror has a touch panel)
+  // or the dev control below.
   const approaching = ref(false);
   let approachTimer: number | undefined;
 
   function handleApproach(): void {
+    if (approaching.value) return; // already navigating to Engage
     approaching.value = true;
     playChime(0.06);
     approachTimer = window.setTimeout(() => {
@@ -125,16 +123,67 @@
     }, 850);
   }
 
+  // ---------- real presence sensor: @fitsee/user-tasks' PersonDetection ----------
+  // Body-pose only (mediapipe landmarks), no face, no identity — see
+  // src/services/person-detection.service.ts. It only reports present/missing, so
+  // the bloom-vs-approach distinction is a dwell-time heuristic here: present only
+  // briefly -> someone walked by (Tier A bloom); present past APPROACH_DWELL_MS ->
+  // someone stopped (Tier C approach). APPROACH_DWELL_MS is a placeholder, not yet
+  // tuned against real foot traffic — see README "Open items".
+  const APPROACH_DWELL_MS = 1500;
+  let dwellTimer: number | undefined;
+  let stopListeningPresence: (() => void) | null = null;
+
+  function handlePersonPresent(): void {
+    presenceStatus.value = 'present';
+    window.clearTimeout(dwellTimer);
+    dwellTimer = window.setTimeout(() => {
+      dwellTimer = undefined;
+      handleApproach();
+    }, APPROACH_DWELL_MS);
+  }
+
+  function handlePersonMissing(): void {
+    presenceStatus.value = 'watching';
+    const wasDwelling = dwellTimer !== undefined;
+    window.clearTimeout(dwellTimer);
+    dwellTimer = undefined;
+    if (wasDwelling) {
+      // present for less than APPROACH_DWELL_MS, then gone — a walk-by, not a stop
+      triggerBloom();
+    }
+  }
+
+  async function listenForPresence(): Promise<void> {
+    const { personDetectionService, PersonDetectionEvents } = await import('@/services');
+    const detector = await personDetectionService.onReady();
+
+    presenceStatus.value = 'watching';
+    detector.subscribe(PersonDetectionEvents.PERSON_PRESENT, handlePersonPresent);
+    detector.subscribe(PersonDetectionEvents.PERSON_MISSING, handlePersonMissing);
+
+    stopListeningPresence = () => {
+      detector.unsubscribe(PersonDetectionEvents.PERSON_PRESENT, handlePersonPresent);
+      detector.unsubscribe(PersonDetectionEvents.PERSON_MISSING, handlePersonMissing);
+    };
+  }
+
   onMounted(() => {
     timeModeInterval = window.setInterval(() => {
       timeMode.value = computeTimeMode();
     }, 60_000);
+
+    if (isElectron) {
+      listenForPresence();
+    }
   });
 
   onBeforeUnmount(() => {
     window.clearInterval(timeModeInterval);
     window.clearTimeout(cooldownStatusTimer);
     window.clearTimeout(approachTimer);
+    window.clearTimeout(dwellTimer);
+    stopListeningPresence?.();
   });
 </script>
 
@@ -162,8 +211,11 @@
 
       <div class="mode-tag">{{ timeMode.tag }}</div>
 
-      <!-- Dev/demo controls — no real presence sensor wired up yet, see README -->
+      <!-- Dev/demo controls — real presence detection (PersonDetection) drives the
+           bloom/approach automatically inside Electron; these stay as manual test
+           aids and as the only trigger in the browser preview build. -->
       <div class="dev-controls">
+        <span v-if="isElectron" class="dev-status">presence sensor: {{ presenceStatus }}</span>
         <button class="dev-btn" @click="triggerBloom">
           Simulate someone walking by{{ cooldownRemaining > 0 ? ` (${cooldownRemaining}s)` : '' }}
         </button>
@@ -368,5 +420,13 @@
   }
   .dev-btn.accent {
     color: #7fa8a3;
+  }
+  .dev-status {
+    font-size: 9.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #7fa8a3;
+    text-align: right;
+    padding-right: 2px;
   }
 </style>

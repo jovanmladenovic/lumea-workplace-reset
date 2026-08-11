@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import { onMounted, ref } from 'vue';
-  import { userInput, faceRecognition, userTasks } from '@/services';
+  import { userInput, faceRecognition, userTasks, personDetectionService } from '@/services';
   import { initializeVideoStream } from '@/utils';
 
   const videoRef = ref();
@@ -14,6 +14,10 @@
       faceRecognition.init(videoRef.value);
 
       userTasks.init(canvasRef.value, videoRef.value);
+
+      // Body-pose presence sensor for the Lumea ambient layer (AmbientStandby.vue)
+      // — separate pose model from userTasks above, see person-detection.service.ts.
+      personDetectionService.init(videoRef.value);
     });
   });
 </script>
