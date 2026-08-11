@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
+import fs from 'node:fs';
 import started from 'electron-squirrel-startup';
 import dotenv from 'dotenv';
 import * as Sentry from "@sentry/electron";
@@ -16,6 +17,32 @@ import { getAuthToken } from './firebase/firebaseAdmin';
 if (started) {
   app.quit();
 }
+
+// Ambient-layer engagement counter — aggregate numbers only, no timestamps, no
+// identity, no per-event log. Just three running totals persisted to a JSON file
+// in Electron's userData dir, so they survive app restarts.
+type EngagementCounts = {
+  passersBy: number;
+  approaches: number;
+  engagements: number;
+};
+
+const DEFAULT_COUNTS: EngagementCounts = { passersBy: 0, approaches: 0, engagements: 0 };
+
+const getCountsFilePath = () => path.join(app.getPath('userData'), 'engagement-counts.json');
+
+const readCounts = (): EngagementCounts => {
+  try {
+    const raw = fs.readFileSync(getCountsFilePath(), 'utf-8');
+    return { ...DEFAULT_COUNTS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_COUNTS };
+  }
+};
+
+const writeCounts = (counts: EngagementCounts): void => {
+  fs.writeFileSync(getCountsFilePath(), JSON.stringify(counts, null, 2));
+};
 
 const createWindow = () => {
   const mainWindow = new BrowserWindow({
@@ -45,6 +72,17 @@ const createWindow = () => {
 app.on('ready', () => {
   ipcMain.handle('auth:getAuthToken', (_event, arg) => {
     return getAuthToken(arg);
+  });
+
+  ipcMain.handle('counts:increment', (_event, counterName: keyof EngagementCounts) => {
+    const counts = readCounts();
+    counts[counterName] = (counts[counterName] ?? 0) + 1;
+    writeCounts(counts);
+    return counts;
+  });
+
+  ipcMain.handle('counts:get', () => {
+    return readCounts();
   });
 
   // Set up synchronous IPC for environment variables

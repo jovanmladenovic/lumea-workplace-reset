@@ -5,6 +5,7 @@
   import { RoutePaths } from '@/router';
   import DefaultLayout from '@/layouts/DefaultLayout.vue';
   import { useChime } from '@/composables/useChime';
+  import { incrementEngagementCount } from '@/services/engagement-counter.service';
 
   const router = useRouter();
   const { playChime } = useChime();
@@ -103,6 +104,7 @@
       bloomPlaying.value = true;
     });
     playChime(0.05);
+    incrementEngagementCount('passersBy');
 
     cooldownUntil.value = now + COOLDOWN_MS;
     updateCooldownStatus();
@@ -129,6 +131,7 @@
     if (approaching.value) return; // already navigating to Engage
     approaching.value = true;
     playChime(0.06);
+    incrementEngagementCount('approaches');
     approachTimer = window.setTimeout(() => {
       // orb blooms outward and fades — mirrors the bloom-ring language used
       // elsewhere on this screen, rather than a hard cut to the next route

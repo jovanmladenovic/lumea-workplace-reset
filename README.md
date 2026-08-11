@@ -36,6 +36,16 @@ bloom; present past it → Tier C approach. **Not yet tuned against real foot tr
 (`PersonDetection`'s own, plus `userTasks`' existing one) now run concurrently on the
 same camera feed — works, but is redundant inference cost worth revisiting later.
 
+**Engagement counter (`src/services/engagement-counter.service.ts`)** — three
+aggregate running totals, `passersBy` / `approaches` / `engagements`, incremented
+from `triggerBloom()`, `handleApproach()`, and `Engage.vue`'s `confirmEngagement()`
+respectively. No timestamps, no identity, no per-event log — just numbers going up,
+consistent with "anonymous, always". Persisted via IPC (`counts:increment`/
+`counts:get` in `main.ts`) to a JSON file in Electron's `userData` dir, so it
+survives restarts. Logged to DevTools console on every increment for visibility. No
+UI to view them yet — read the file directly, or call
+`window.electronAPI.getCounts()` from the DevTools console.
+
 ## Running it
 
 ```bash
@@ -78,8 +88,12 @@ https://jovanmladenovic.github.io/lumea-workplace-reset/.
   `userTasks`'s existing one) on the same camera feed — functional but wasteful;
   would need the `@fitsee/user-tasks` package itself to expose a shared tracker to
   fix properly.
-- **What counts as "success" is still undecided** — a thumbs-up produces no data on
-  its own; nothing currently counts gesture-recognition events anywhere.
+- **The counter has no viewing UI and no export path off the device yet** — it's a
+  local JSON file inside Electron's `userData` dir. Fine for local testing, not yet
+  useful for "check engagement remotely without physical access" (the actual
+  deployment constraint from the handoff doc §2). Would need either a small
+  in-app admin view or shipping the counts to Firestore (already used elsewhere in
+  this app) to be checked remotely.
 - `yarn install` / `yarn dev` are confirmed working locally (2026-08-11) with proper
   `@fitsee` registry auth. Real-camera presence detection and the thumbs-up gesture
   still need to be verified end-to-end in front of an actual webcam — I've only been

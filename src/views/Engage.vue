@@ -6,6 +6,7 @@
   import DefaultLayout from '@/layouts/DefaultLayout.vue';
   import { useChime } from '@/composables/useChime';
   import { TEASERS } from '@/constants/teasers';
+  import { incrementEngagementCount } from '@/services/engagement-counter.service';
 
   const router = useRouter();
   const { playChime } = useChime();
@@ -37,6 +38,7 @@
     line.value = 'Good to see you.';
     sub.value = teaser;
     playChime(0.07);
+    incrementEngagementCount('engagements');
 
     window.clearTimeout(returnTimer);
     returnTimer = window.setTimeout(() => {
