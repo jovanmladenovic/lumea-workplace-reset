@@ -3,4 +3,5 @@ node_modules/
 dist/
 out/
 .env
+.npmrc
 .DS_Store
