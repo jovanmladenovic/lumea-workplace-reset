@@ -20,7 +20,14 @@
   const line = ref('Thanks for stopping by.');
   const sub = ref('A quick thumbs up is all we need.');
 
+  // Fade+scale in on mount, fade+scale out before handing back to AmbientStandby —
+  // mirrors the same transition pattern used there instead of a hard cut.
+  const entering = ref(true);
+  const leaving = ref(false);
+  const LEAVE_TRANSITION_MS = 480;
+
   let returnTimer: number | undefined;
+  let leaveTransitionTimer: number | undefined;
   let stopListening: (() => void) | null = null;
 
   function confirmEngagement(): void {
@@ -33,7 +40,10 @@
 
     window.clearTimeout(returnTimer);
     returnTimer = window.setTimeout(() => {
-      router.push(RoutePaths.AmbientStandby);
+      leaving.value = true;
+      leaveTransitionTimer = window.setTimeout(() => {
+        router.push(RoutePaths.AmbientStandby);
+      }, LEAVE_TRANSITION_MS);
     }, 4200);
   }
 
@@ -54,17 +64,22 @@
     if (isElectron) {
       listenForThumbsUp();
     }
+
+    requestAnimationFrame(() => {
+      entering.value = false;
+    });
   });
 
   onBeforeUnmount(() => {
     window.clearTimeout(returnTimer);
+    window.clearTimeout(leaveTransitionTimer);
     stopListening?.();
   });
 </script>
 
 <template>
   <DefaultLayout>
-    <div class="engage">
+    <div class="engage" :class="{ entering, leaving }">
       <div class="engage-orb-wrap" :class="{ confirmed }">
         <div class="engage-ring"></div>
         <div class="engage-orb"></div>
@@ -95,6 +110,19 @@
     font-family: 'Archivo', sans-serif;
     color: #f4efe7;
     background: radial-gradient(120% 90% at 50% 12%, #1c1815 0%, #14110f 62%);
+    opacity: 1;
+    transform: scale(1);
+    transition:
+      opacity 0.48s cubic-bezier(0.2, 0.7, 0.3, 1),
+      transform 0.48s cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  .engage.entering {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  .engage.leaving {
+    opacity: 0;
+    transform: scale(1.04);
   }
 
   .engage-orb-wrap {

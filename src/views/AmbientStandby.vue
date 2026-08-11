@@ -12,6 +12,11 @@
   const isElectron = typeof window !== 'undefined' && Boolean((window as unknown as { electronAPI?: unknown }).electronAPI);
   const presenceStatus = ref<'unavailable' | 'watching' | 'present'>('unavailable');
 
+  // Fade+scale in on mount (e.g. returning from Engage) — starts true so the
+  // .entering CSS state is present for the very first render, then cleared a
+  // frame later so the transition actually has something to animate from.
+  const entering = ref(true);
+
   // ---------- B: time-of-day pulse — clock-only, never personalized ----------
   type TimeMode = {
     color: string;
@@ -112,14 +117,22 @@
   // Also fires from a direct tap (a real affordance if the mirror has a touch panel)
   // or the dev control below.
   const approaching = ref(false);
+  const leavingToEngage = ref(false);
+  const LEAVE_TRANSITION_MS = 480;
   let approachTimer: number | undefined;
+  let leaveTransitionTimer: number | undefined;
 
   function handleApproach(): void {
     if (approaching.value) return; // already navigating to Engage
     approaching.value = true;
     playChime(0.06);
     approachTimer = window.setTimeout(() => {
-      router.push(RoutePaths.Engage);
+      // orb blooms outward and fades — mirrors the bloom-ring language used
+      // elsewhere on this screen, rather than a hard cut to the next route
+      leavingToEngage.value = true;
+      leaveTransitionTimer = window.setTimeout(() => {
+        router.push(RoutePaths.Engage);
+      }, LEAVE_TRANSITION_MS);
     }, 850);
   }
 
@@ -176,12 +189,17 @@
     if (isElectron) {
       listenForPresence();
     }
+
+    requestAnimationFrame(() => {
+      entering.value = false;
+    });
   });
 
   onBeforeUnmount(() => {
     window.clearInterval(timeModeInterval);
     window.clearTimeout(cooldownStatusTimer);
     window.clearTimeout(approachTimer);
+    window.clearTimeout(leaveTransitionTimer);
     window.clearTimeout(dwellTimer);
     stopListeningPresence?.();
   });
@@ -191,6 +209,7 @@
   <DefaultLayout>
     <div
       class="ambient-standby"
+      :class="{ entering, leaving: leavingToEngage }"
       :style="{ background: deviceBackground, '--mode-color': timeMode.color, '--mode-glow': timeMode.glow }"
     >
       <div class="badge"><span class="dot"></span> Anonymous, always</div>
@@ -235,8 +254,23 @@
     justify-content: center;
     font-family: 'Archivo', sans-serif;
     color: #f4efe7;
-    transition: background 1.4s ease;
+    transition:
+      background 1.4s ease,
+      opacity 0.48s cubic-bezier(0.2, 0.7, 0.3, 1),
+      transform 0.48s cubic-bezier(0.2, 0.7, 0.3, 1);
     overflow: hidden;
+    opacity: 1;
+    transform: scale(1);
+  }
+  /* fade+scale in on mount (e.g. returning from Engage) */
+  .ambient-standby.entering {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  /* orb blooms outward and fades before handing off to Engage */
+  .ambient-standby.leaving {
+    opacity: 0;
+    transform: scale(1.06);
   }
 
   .badge {
