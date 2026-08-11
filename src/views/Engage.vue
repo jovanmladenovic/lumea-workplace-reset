@@ -167,8 +167,8 @@
   .engage-icon {
     position: absolute;
     /* source is 200x265 (not square) — sized to preserve its real aspect ratio */
-    width: 47px;
-    height: 62px;
+    width: 118px;
+    height: 155px;
     color: #14110f;
     opacity: 0.8;
     transition: transform 0.3s ease;
