@@ -13,8 +13,9 @@
   const isElectron = typeof window !== 'undefined' && Boolean((window as unknown as { electronAPI?: unknown }).electronAPI);
   const presenceStatus = ref<'unavailable' | 'watching' | 'present'>('unavailable');
 
-  // Hidden for now — flip back to true to bring back the manual test controls.
-  const SHOW_DEV_CONTROLS = false;
+  // Minimal manual test controls (top-right): two unlabeled circles, bloom then
+  // approach. Flip to false to hide entirely.
+  const SHOW_DEV_CONTROLS = true;
 
   // Fade+scale in on mount (e.g. returning from Engage) — starts true so the
   // .entering CSS state is present for the very first render, then cleared a
@@ -238,13 +239,11 @@
 
       <!-- Dev/demo controls — real presence detection (PersonDetection) drives the
            bloom/approach automatically inside Electron; these stay as manual test
-           aids and as the only trigger in the browser preview build. -->
+           aids and as the only trigger in the browser preview build. Unlabeled by
+           design: first = bloom (Tier A), second = approach (Tier C). -->
       <div v-if="SHOW_DEV_CONTROLS" class="dev-controls">
-        <span v-if="isElectron" class="dev-status">presence sensor: {{ presenceStatus }}</span>
-        <button class="dev-btn" @click="triggerBloom">
-          Simulate someone walking by{{ cooldownRemaining > 0 ? ` (${cooldownRemaining}s)` : '' }}
-        </button>
-        <button class="dev-btn accent" @click="handleApproach">Simulate stepping close</button>
+        <button class="dev-dot" title="Simulate someone walking by" @click="triggerBloom"></button>
+        <button class="dev-dot accent" title="Simulate stepping close" @click="handleApproach"></button>
       </div>
     </div>
   </DefaultLayout>
@@ -441,32 +440,24 @@
     right: 23px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    opacity: 0.55;
+    align-items: center;
+    gap: 10px;
+    opacity: 0.4;
+    transition: opacity 0.2s ease;
   }
   .dev-controls:hover {
     opacity: 1;
   }
-  .dev-btn {
+  .dev-dot {
     all: unset;
     cursor: pointer;
-    font-size: 20px;
-    color: #c9c1b4;
-    background: rgba(244, 239, 231, 0.06);
-    border: 1px solid rgba(244, 239, 231, 0.12);
-    padding: 12px 20px;
-    border-radius: 100px;
-    white-space: nowrap;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #c9c1b4;
+    border: 1px solid rgba(244, 239, 231, 0.3);
   }
-  .dev-btn.accent {
-    color: #7fa8a3;
-  }
-  .dev-status {
-    font-size: 18px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: #7fa8a3;
-    text-align: right;
-    padding-right: 2px;
+  .dev-dot.accent {
+    background: #7fa8a3;
   }
 </style>
