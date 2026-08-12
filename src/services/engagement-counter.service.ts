@@ -1,6 +1,6 @@
 import { getFirestore, doc, increment, setDoc } from 'firebase/firestore';
 
-import { firebaseApp } from '@/firebase/firebase';
+import { counterFirebaseApp } from '@/firebase/counter-firebase';
 
 // Ambient-layer engagement counter — three aggregate running totals
 // (passersBy / approaches / engagements). No timestamps, no identity, no
@@ -8,11 +8,12 @@ import { firebaseApp } from '@/firebase/firebase';
 // count is not the same thing as tracking a person.
 //
 // Two backends, both best-effort:
-// - Firestore (this is the one that matters — the mirror has no physical
-//   access, only remote updates, so a local-only count can't actually be
-//   checked). Uses firebaseApp directly (not vuefire's useFirestore(), which
-//   needs a component context this isn't), so it works from Electron AND the
-//   GitHub Pages preview build — firebase/firebase.ts has no window.electronAPI
+// - Firestore, in its own dedicated project (lumea-workplace-reset — see
+//   counter-firebase.ts), separate from firebase.ts (Fitsee's fitsee-d45e6,
+//   used by the real face-login/vectors flow). This is the one that matters —
+//   the mirror has no physical access, only remote updates, so a local-only
+//   count can't actually be checked. Works from Electron AND the GitHub Pages
+//   preview build, since counter-firebase.ts has no window.electronAPI
 //   dependency.
 // - Local JSON file via IPC (main.ts), Electron-only. Kept as an
 //   offline-tolerant record in case the Firestore write fails (no retry queue
@@ -23,13 +24,12 @@ import { firebaseApp } from '@/firebase/firebase';
 // touches window.electronAPI.env at import time).
 export type EngagementCounter = 'passersBy' | 'approaches' | 'engagements';
 
-const db = getFirestore(firebaseApp);
+const db = getFirestore(counterFirebaseApp);
 
 // One doc per device — see docs/lumea-project-handoff.md, this is a single-mirror
 // deployment today, but scoping by DEVICE_ID avoids collisions if that changes.
-// NOT verified against the project's actual Firestore security rules — if writes
-// silently fail, check the rules for the `engagementCounts` collection in the
-// Firebase console.
+// Requires the `engagementCounts` collection's security rules (set up separately
+// in the Firebase console) to allow this write.
 function getDeviceCountsRef() {
   const deviceId = window.electronAPI?.env?.DEVICE_ID || 'default-device';
   return doc(db, 'engagementCounts', deviceId);
